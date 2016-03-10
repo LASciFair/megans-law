@@ -60,7 +60,7 @@ def main():
     driver.get('http://meganslaw.ca.gov/')
 
     # pass instance with names to check
-    check_names_with_website(driver, df_to_check)
+    check_names_with_website(driver, df_to_check.loc[120:])
 
     # end selenium instance
     driver.quit()
@@ -70,7 +70,7 @@ def main():
 def read_input_file(filename):
     try:
         to_check = pd.read_excel(filename, header=0)
-    except IndexError, IOError:
+    except (IndexError, IOError):
         raise ValueError("Filename arguement not provided or doesn't exist")
 
     # throw to upper case to avoid errors and clean up
@@ -108,9 +108,6 @@ def check_names_with_website(driver, to_check):
     driver.find_element_by_name("cbAgree").click()
     driver.find_element_by_id("B1").click()
     driver.find_element_by_css_selector("img[alt=\"Name Search\"]").click()
-
-    # to_check is the df to check
-    to_check = to_check.loc[20:90]
 
     for index, row in to_check.iterrows():
         test_name(driver, last=row.last_name, first=row.first_name)
