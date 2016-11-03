@@ -1,0 +1,5 @@
+# Test runner/testing utils
+pytest
+# calculations
+pandas
+selenium

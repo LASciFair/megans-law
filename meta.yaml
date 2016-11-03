@@ -1,0 +1,13 @@
+package:
+  name: megans_law
+  version: 1.0
+
+build:
+  number: 2.7
+
+requirements:
+  run:
+    - python
+
+about:
+  summary: This is a package to query California's Megan's Law database.
