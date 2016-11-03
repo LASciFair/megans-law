@@ -18,15 +18,14 @@ http://meganslaw.ca.gov/ by hand with names in and not in the database.
 ### Example
 
 ```bash
-python ca_megans_law.py
+pip install .
+ca_megans_law.py INPUT
 ```
 
 ### TODO
 
 * Most is hard-coded here. Need to revise the script to
 accept command line arguments.
-
-* Turn into a real package
 
 * Formal tests
 

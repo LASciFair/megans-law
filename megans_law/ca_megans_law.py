@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 
-import sys
 import time
 
 import selenium
@@ -15,62 +14,20 @@ import selenium
 # from selenium.common.exceptions import NoSuchElementException
 # from selenium.common.exceptions import NoAlertPresentException
 
-import pandas as pd
-
-
-def main():
-    df_to_check = read_input_file(sys.argv[1])
-
+def setup_driver():
+    """
+    Write docs
+    """
     # start up selenium instance
     driver = selenium.webdriver.Firefox()
     driver.implicitly_wait(30)
     driver.get('http://meganslaw.ca.gov/')
-
-    # pass instance with names to check
-    check_names_with_website(driver, df_to_check.loc[120:])
-
-    # end selenium instance
-    driver.quit()
-
-    return
-
-
-def read_input_file(filename):
-    try:
-        to_check = pd.read_excel(filename, header=0)
-    except (IndexError, IOError):
-        raise ValueError("Filename arguement not provided or doesn't exist")
-
-    # throw to upper case to avoid errors and clean up
-    to_check.full_name = to_check.full_name.astype(str)
-    to_check.legal_first_name = to_check.legal_first_name.astype(str)
-
-    to_check.full_name = to_check.full_name.str.upper()
-    to_check.legal_first_name = to_check.legal_first_name.str.upper()
-
-    to_check.full_name = to_check.full_name.str.strip()
-    to_check.legal_first_name = to_check.legal_first_name.str.strip()
-
-    # split full name column into two
-    name_split = []
-
-    # remove those that don't have last name
-    for item in to_check.full_name.str.split(',', 1).tolist():
-        if type(item) is list:
-            name_split.append(item)
-
-    name = pd.DataFrame(name_split, columns=['last_name', 'first_name'])
-    name.last_name = name.last_name.str.strip()
-    name.first_name = name.first_name.str.strip()
-    to_check = pd.concat([to_check, name], axis=1)
-
-    to_check['same_first_name'] = \
-        to_check.legal_first_name == to_check.first_name
-
-    return to_check
-
+    return driver
 
 def check_names_with_website(driver, to_check):
+    """
+    Write docs
+    """
     # read in file
     driver.find_element_by_id("B1").click()
     driver.find_element_by_name("cbAgree").click()
@@ -91,6 +48,9 @@ def check_names_with_website(driver, to_check):
 
 
 def test_name(driver, last, first):
+    """
+    Write docs
+    """
     driver.find_element_by_name("lastName").clear()
     driver.find_element_by_name("lastName").send_keys(last)
     driver.find_element_by_name("firstName").clear()
@@ -117,7 +77,3 @@ def test_name(driver, last, first):
         else:
             driver.execute_script("window.history.go(-1)")
             return True
-
-
-if __name__ == "__main__":
-    main()
