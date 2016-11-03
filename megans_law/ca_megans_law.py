@@ -1,41 +1,6 @@
 # -*- coding: utf-8 -*-
 """California Megan's Law Search Sript
 
-This script takes an excel file with names, searches the California Megan's Law
-database and returns whether any hits were found along with those detail. Each
-hit can then be verified by hand via other information, e.g. birthdate, address.
-
-Every 10 searches, a known hit is run to check the searching continues to work
-properly.
-
-The original script was created by using Selenium GUI and searching
-http://meganslaw.ca.gov/ by hand with names in and not in the database.
-
-Written by Shyam Saladi (saladi@caltech.edu)
-March 9, 2016
-
-Example
--------
-How to run the code:
-
-    $ python ca_megans_law.py
-
-
-Notes
------
-TODO: Most is hard-coded here. Need to revise the script to
-accept command line arguments.
-
-PEP8 the code.
-
-Refining the search and hit strategy would be good - automate birthdate and
-address checking.
-
-Refine into functions to be extended to on-the-fly checking, e.g. as a
-component of the online registration process itself.
-Add comments accordingly to each function.
-
-Refine the output format. Would be good to the output as a CSV or Excel file.
 """
 
 import sys
