@@ -3,15 +3,17 @@
 
 """
 
+from __future__ import print_function
+
 import sys
 import time
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import NoAlertPresentException
+import selenium
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.support.ui import Select
+# from selenium.common.exceptions import NoSuchElementException
+# from selenium.common.exceptions import NoAlertPresentException
 
 import pandas as pd
 
@@ -20,7 +22,7 @@ def main():
     df_to_check = read_input_file(sys.argv[1])
 
     # start up selenium instance
-    driver = webdriver.Firefox()
+    driver = selenium.webdriver.Firefox()
     driver.implicitly_wait(30)
     driver.get('http://meganslaw.ca.gov/')
 
@@ -31,6 +33,7 @@ def main():
     driver.quit()
 
     return
+
 
 def read_input_file(filename):
     try:
@@ -47,7 +50,6 @@ def read_input_file(filename):
 
     to_check.full_name = to_check.full_name.str.strip()
     to_check.legal_first_name = to_check.legal_first_name.str.strip()
-
 
     # split full name column into two
     name_split = []
@@ -66,6 +68,7 @@ def read_input_file(filename):
         to_check.legal_first_name == to_check.first_name
 
     return to_check
+
 
 def check_names_with_website(driver, to_check):
     # read in file
@@ -86,6 +89,7 @@ def check_names_with_website(driver, to_check):
 
     return
 
+
 def test_name(driver, last, first):
     driver.find_element_by_name("lastName").clear()
     driver.find_element_by_name("lastName").send_keys(last)
@@ -96,21 +100,24 @@ def test_name(driver, last, first):
     body = driver.find_element_by_tag_name("body").text
 
     if "Your search returned no results." in body:
-        print "#### %s\t%s\tNO RESULTS" % (last, first)
+        print("#### %s\t%s\tNO RESULTS" % (last, first))
         driver.find_element_by_css_selector("img[alt=\"New Search\"]").click()
         return False
     else:
-        print "#### %s\t%s\tCHECK THIS" % (last, first)
+        print("#### %s\t%s\tCHECK THIS" % (last, first))
         # print driver.current_url
-        print body
-        print "//"
+        print(body)
+        print("//")
         if 'page 1' in body:
-            driver.find_element_by_css_selector("img[alt=\"New Search\"]").click()
-            driver.find_element_by_css_selector("img[alt=\"Name Search\"]").click()
+            driver.find_element_by_css_selector(
+                "img[alt=\"New Search\"]").click()
+            driver.find_element_by_css_selector(
+                "img[alt=\"Name Search\"]").click()
             return True
         else:
             driver.execute_script("window.history.go(-1)")
             return True
+
 
 if __name__ == "__main__":
     main()

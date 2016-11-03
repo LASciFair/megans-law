@@ -26,8 +26,6 @@ python ca_megans_law.py
 * Most is hard-coded here. Need to revise the script to
 accept command line arguments.
 
-* PEP8
-
 * Turn into a real package
 
 * Formal tests
