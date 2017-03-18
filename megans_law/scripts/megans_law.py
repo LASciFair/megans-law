@@ -43,29 +43,17 @@ def read_input_file(filename):
         to_check = pd.read_excel(filename, header=0)
     except (IndexError, IOError):
         raise ValueError("Filename arguement not provided or doesn't exist")
-
-    # throw to upper case to avoid errors and clean up
-    to_check.full_name = to_check.full_name.astype(str)
-    to_check.legal_first_name = to_check.legal_first_name.astype(str)
-
-    to_check.full_name = to_check.full_name.str.upper()
-    to_check.legal_first_name = to_check.legal_first_name.str.upper()
-
-    to_check.full_name = to_check.full_name.str.strip()
-    to_check.legal_first_name = to_check.legal_first_name.str.strip()
-
-    # split full name column into two
-    name_split = []
+    print(to_check.columns)
+    for col in ['legal_first_name', 'first_name', 'last_name']:
+        to_check[col] = to_check[col].astype(str)
+        to_check[col] = to_check[col].str.upper().str.strip().str.rstrip()
 
     # remove those that don't have last name
-    for item in to_check.full_name.str.split(',', 1).tolist():
-        if type(item) is list:
-            name_split.append(item)
+#    for item in to_check.full_name.str.split(',', 1).tolist():
+#        if type(item) is list:
+#            name_split.append(item)
 
-    name = pd.DataFrame(name_split, columns=['last_name', 'first_name'])
-    name.last_name = name.last_name.str.strip()
-    name.first_name = name.first_name.str.strip()
-    to_check = pd.concat([to_check, name], axis=1)
+#    to_check = pd.concat([to_check, name], axis=1)
 
     to_check['same_first_name'] = \
         to_check.legal_first_name == to_check.first_name

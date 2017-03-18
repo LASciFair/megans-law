@@ -41,3 +41,21 @@ component of the online registration process itself.
 Add comments accordingly to each function.
 
 * Refine the output format. Would be good to the output as a CSV or Excel file.
+
+
+### Query to generate people to screen
+```mysql
+    SELECT user_id, legal_first_name, first_name, middle_initial, last_name,
+            address, city, state, zip, gender,
+            month_of_birth, day_of_birth, year_of_birth
+    FROM
+    (
+        SELECT user_id, legal_first_name, middle_initial,
+                month_of_birth, day_of_birth, year_of_birth FROM judges
+        UNION ALL
+        SELECT user_id, legal_first_name, middle_initial,
+                month_of_birth, day_of_birth, year_of_birth FROM volunteers
+    ) people
+    JOIN users ON users.id = people.user_id
+    WHERE users.role IN ('J', 'V')
+```
