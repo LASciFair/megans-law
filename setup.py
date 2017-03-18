@@ -12,7 +12,8 @@ setup(
     download_url='https://github.com/LASciFair/megans-law/tarball/0.1',
     keywords=['automation'],
     license='GNU General Public License v3 (GPLv3)',
-    scripts=['megans_law/scripts/megans_law.py'],
+    entry_points={'console_scripts': [
+        'ca_megans_law.py=megans_law.ca_megans_law:main']},
     install_requires=['pandas', 'selenium'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest', 'pandas']
