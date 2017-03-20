@@ -3,11 +3,9 @@
 
 """
 
-from __future__ import print_function
-
 import sys
+import os.path
 import argparse
-import time
 
 import pandas as pd
 
@@ -15,99 +13,133 @@ import selenium
 import selenium.webdriver
 import selenium.common.exceptions
 
-def setup_driver():
+class CAMeagansLaw():
     """
-    Write docs
-    """
-    # start up selenium instance
-    driver = selenium.webdriver.Firefox()
-    driver.implicitly_wait(30)
-    driver.get('https://meganslaw.ca.gov/Search.aspx')
-    driver.find_element_by_id("AcceptDisclaimer").click()
-    # human needs to do Captcha
-    driver.implicitly_wait(30)
-    return driver
-
-def check_names_with_website(driver, to_check):
-    """
-    Write docs
     """
 
-    driver.find_element_by_id("IncludeTransient").click()
+    def __init__(self, debug, transient=True):
+        """Initialize object.
 
-    for index, row in to_check.iterrows():
-        test_name(driver, last=row.last_name, first=row.first_name)
+        `transient` refers to transient offenders as specified online
+        """
+        self.debug = bool(debug)
+        self.transient = transient
+        return
 
-        if not row.same_first_name:
-            test_name(driver, last=row.last_name, first=row.legal_first_name)
+    def __enter__(self):
+        """Startup connection to the database
+        """
+        # start up selenium instance
+        self.driver = selenium.webdriver.Firefox()
+        self.driver.implicitly_wait(30)
+        self.driver.get('https://meganslaw.ca.gov/Search.aspx')
+        self.driver.find_element_by_id("AcceptDisclaimer").click()
 
-        if index % 10 == 0:
-            # POSITIVE CONTROL
-            test_name(driver, last="AMAYA", first="OSCAR")
+        # Human to do Captcha
+        self.driver.implicitly_wait(30)
 
-    return
+        # select
+        if self.transient:
+            self.driver.find_element_by_id("IncludeTransient").click()
 
-
-def test_name(driver, last, first):
-    """
-    Write docs
-    """
-    driver.find_element_by_name("OLastName").clear()
-    driver.find_element_by_name("OLastName").send_keys(last)
-    driver.find_element_by_name("OFirstName").clear()
-    driver.find_element_by_name("OFirstName").send_keys(first)
-    time.sleep(1)
-    #driver.find_element_by_css_selector("img[alt=\"search\"]").click()
-    driver.find_element_by_xpath('.//input[@onclick="doNameSearch()"]').click()
-
-
-    driver.find_element_by_xpath('.//a[@onclick="showListResults()"]').click()
+        return self
 
 
-    body = driver.find_element_by_tag_name("body").text
+    def __exit__(self, *args):
+        """Close driver instance
+        """
+        self.driver.quit()
+        return
 
-    if "No offenders matched your search." in body:
-        print("#### %s\t%s\tNO RESULTS" % (last, first))
-        driver.find_element_by_xpath('.//input[@value="Close"]').click()
-        return False
-    else:
-        print("#### %s\t%s\tCHECK THIS" % (last, first))
-        # print driver.current_url
-        print(body)
-        print("//")
+
+    def query_df(self, df, last='last_name', first='first_name',
+                 legal_first='legal_first_name', pos_interval=10):
+        """Convenience method to query with a dataframe
+
+        pos_interval refers to how often the positive control is checked
+
+        """
+        return df.apply(self.query_series, axis=1,
+                        last=last, first=first, legal_first=legal_first,
+                        pos_interval=pos_interval)
+
+
+    def query_series(self, ser, last, first,
+                     legal_first=False, pos_interval=-1):
+        """Another convenience method to query with a series object.
+        Probably will only ever be used by `query_df`
+        """
+        result = self.query(last=ser[last], first=ser[first])
+
+        # Check legal first name if it's different and result has not already
+        # come up as positive
+        if legal_first and not result and ser[first] != ser[legal_first]:
+            result = self.query(last=ser[last], first=ser[legal_first])
+
+        # Check positive control if directed
+        if pos_interval > 0 and ser.name % pos_interval == 0:
+            self.positive_query()
+
+        return result
+
+
+    def positive_query(self):
+        """Make sure positive control comes up correctly
+        """
+        if not self.query(last="AMAYA", first="OSCAR"):
+            raise RuntimeError("Positive control not showing")
         return True
 
 
+    def query(self, last, first):
+        """Query database for the given name
+
+        This method should be updated as the online interface changes over
+        time.
+        """
+        self.driver.find_element_by_name("OLastName").clear()
+        self.driver.find_element_by_name("OLastName").send_keys(last)
+        self.driver.find_element_by_name("OFirstName").clear()
+        self.driver.find_element_by_name("OFirstName").send_keys(first)
+
+        self.driver.find_element_by_xpath(
+            './/input[@onclick="doNameSearch()"]').click()
+
+        self.driver.find_element_by_xpath(
+            './/a[@onclick="showListResults()"]').click()
+
+        self.driver.implicitly_wait(10)
+
+        body = self.driver.find_element_by_tag_name("body").text
+
+        if "No offenders matched your search." in body:
+            if self.debug:
+                print("#### %s\t%s\tNO RESULTS" % (last, first))
+            self.driver.find_element_by_xpath(
+                    './/input[@value="Close"]').click()
+            return False
+        else:
+            if self.debug:
+                print("#### %s\t%s\tCHECK THIS\n%s\n//" % (last, first, body))
+            return True
+
+
 def read_input_file(filename):
-    """
-    Write docs
+    """Convience method to clean up input file supplied
     """
     try:
         to_check = pd.read_excel(filename, header=0)
     except (IndexError, IOError):
         raise ValueError("Filename arguement not provided or doesn't exist")
-    print(to_check.columns)
+
     for col in ['legal_first_name', 'first_name', 'last_name']:
         to_check[col] = to_check[col].astype(str)
         to_check[col] = to_check[col].str.upper().str.strip().str.rstrip()
-
-    # remove those that don't have last name
-#    for item in to_check.full_name.str.split(',', 1).tolist():
-#        if type(item) is list:
-#            name_split.append(item)
-
-#    to_check = pd.concat([to_check, name], axis=1)
-
-    to_check['same_first_name'] = \
-        to_check.legal_first_name == to_check.first_name
 
     return to_check
 
 
 def main():
-    """
-    Write docs
-    """
     parser = argparse.ArgumentParser(
         description="Run query through Megan's law database.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -116,20 +148,33 @@ def main():
                         type=str,
                         help='File to check')
 
+    parser.add_argument('--output',
+         type=str,
+         default=None,
+         help='Output filename. Default: basename(`inputfile`)._check.csv')
+
+    parser.add_argument('--debug',
+         action='store_true',
+         help='Turn on verbose output to stdout')
+
     args = parser.parse_args()
 
     if(args.inputfile == '-'):
         args.inputfile = sys.stdin
 
-    df_to_check = read_input_file(args.inputfile)
+    df = read_input_file(args.inputfile)
 
-    driver = setup_driver()
+    with CAMeagansLaw(debug=args.debug) as h:
+        # pass instance with names to check
+        df['output'] = h.query_df(df)
 
-    # pass instance with names to check
-    check_names_with_website(driver, df_to_check.loc[120:])
+    if args.output is None:
+        outfn, _ = os.path.splitext(args.inputfile)
+        outfn += '_check'
+    else:
+        outfn = args.output
 
-    # end selenium instance
-    driver.quit()
+    df.to_csv(outfn + '.csv', index=False)
 
     return
 
