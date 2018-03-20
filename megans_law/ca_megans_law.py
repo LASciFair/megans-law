@@ -27,6 +27,8 @@ class CAMeagansLaw():
         self.debug = bool(debug)
         self.transient = transient
         self.pos_interval = pos_interval
+        self.recheck = 0
+        self.neg = 0
 
     def __enter__(self):
         """Startup connection to the database
@@ -75,6 +77,13 @@ class CAMeagansLaw():
         # come up as positive
         if legal_first and not result and ser[first] != ser[legal_first]:
             result = self.query(last=ser[last], first=ser[legal_first])
+
+        if result:
+            self.recheck += 1
+        else:
+            self.neg += 1
+
+        print("Recheck: {}, Negative: {}".format(self.recheck, self.neg), end="\r")
 
         return result
 
