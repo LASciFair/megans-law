@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""California Megan's Law Search Sript
+"""California Megan's Law Search Script
 
 """
 
@@ -8,23 +8,25 @@ import os.path
 import argparse
 
 import pandas as pd
+import xlrd
 
 import selenium
 import selenium.webdriver
-import selenium.common.exceptions
+from selenium.common.exceptions import ElementNotInteractableException, ElementClickInterceptedException
 
 class CAMeagansLaw():
     """
     """
+    count = 0
 
-    def __init__(self, debug, transient=True):
+    def __init__(self, debug, transient=True, pos_interval=10):
         """Initialize object.
 
         `transient` refers to transient offenders as specified online
         """
         self.debug = bool(debug)
         self.transient = transient
-        return
+        self.pos_interval = pos_interval
 
     def __enter__(self):
         """Startup connection to the database
@@ -53,19 +55,17 @@ class CAMeagansLaw():
 
 
     def query_df(self, df, last='last_name', first='first_name',
-                 legal_first='legal_first_name', pos_interval=10):
+                 legal_first='legal_first_name'):
         """Convenience method to query with a dataframe
 
         pos_interval refers to how often the positive control is checked
 
         """
         return df.apply(self.query_series, axis=1,
-                        last=last, first=first, legal_first=legal_first,
-                        pos_interval=pos_interval)
+                        last=last, first=first, legal_first=legal_first)
 
 
-    def query_series(self, ser, last, first,
-                     legal_first=False, pos_interval=-1):
+    def query_series(self, ser, last, first, legal_first=False):
         """Another convenience method to query with a series object.
         Probably will only ever be used by `query_df`
         """
@@ -75,10 +75,6 @@ class CAMeagansLaw():
         # come up as positive
         if legal_first and not result and ser[first] != ser[legal_first]:
             result = self.query(last=ser[last], first=ser[legal_first])
-
-        # Check positive control if directed
-        if pos_interval > 0 and ser.name % pos_interval == 0:
-            self.positive_query()
 
         return result
 
@@ -97,22 +93,42 @@ class CAMeagansLaw():
         This method should be updated as the online interface changes over
         time.
         """
-        self.driver.find_element_by_name("OLastName").clear()
-        self.driver.find_element_by_name("OLastName").send_keys(last)
-        self.driver.find_element_by_name("OFirstName").clear()
-        self.driver.find_element_by_name("OFirstName").send_keys(first)
+        self.count += 1
+        # Check positive control, if necessary
+        if self.pos_interval > 0 and self.count % self.pos_interval == 0:
+            self.positive_query()
 
-        self.driver.find_element_by_xpath(
-            './/input[@onclick="doNameSearch()"]').click()
+        # Close results window
+        try:
+            self.driver.find_element_by_xpath("//input[@value='Close']").click()
+            self.driver.find_element_by_xpath("//div[6]/div/button/span").click()
+        except ElementNotInteractableException:
+            pass
 
-        self.driver.find_element_by_xpath(
-            './/a[@onclick="showListResults()"]').click()
+        # Enter query info
+        try:
+            self.driver.find_element_by_name("OLastName").clear()
+            self.driver.find_element_by_name("OLastName").send_keys(last)
+            self.driver.find_element_by_name("OFirstName").clear()
+            self.driver.find_element_by_name("OFirstName").send_keys(first)
 
-        self.driver.implicitly_wait(10)
+            self.driver.find_element_by_xpath("//input[@value='Search']").click()
+            self.driver.implicitly_wait(10)
 
-        body = self.driver.find_element_by_tag_name("body").text
+            # Press "Show List", if possible
+            try:
+                self.driver.find_element_by_link_text("Show List").click()
+            except ElementClickInterceptedException:
+                pass
 
-        if "No offenders matched your search." in body:
+            # Pull results
+            body = self.driver.find_element_by_tag_name("body").text
+        except Exception as e:
+            self.driver.save_screenshot('error_screenshot.png')
+            raise e
+
+
+        if "No matches." in body or "No offenders matched your search." in body:
             if self.debug:
                 print("#### %s\t%s\tNO RESULTS" % (last, first))
             self.driver.find_element_by_xpath(
@@ -125,12 +141,14 @@ class CAMeagansLaw():
 
 
 def read_input_file(filename):
-    """Convience method to clean up input file supplied
+    """Convenience method to clean up input file supplied
     """
     try:
         to_check = pd.read_excel(filename, header=0)
+    except xlrd.biffh.XLRDError:
+        to_check = pd.read_csv(filename, header=0)
     except (IndexError, IOError):
-        raise ValueError("Filename arguement not provided or doesn't exist")
+        raise ValueError("Filename argument not provided or doesn't exist")
 
     for col in ['legal_first_name', 'first_name', 'last_name']:
         to_check[col] = to_check[col].astype(str)
