@@ -193,7 +193,7 @@ def main():
 
     with CAMeagansLaw(debug=args.debug) as h:
         # pass instance with names to check
-        df['output'] = h.query_df(df)
+        df['recheck'] = h.query_df(df)
 
     if args.output is None:
         outfn, _ = os.path.splitext(args.inputfile)
